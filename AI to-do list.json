@@ -1,0 +1,221 @@
+{
+  "name": "AI to-do list",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "todo",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ac61d9d1-5d42-4742-a211-35b6de36efc9",
+      "name": "Webhook",
+      "webhookId": "818bda62-ba23-4008-857a-ff9328ca753c"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}",
+        "options": {
+          "systemMessage": "You are a task management assistant. When the user asks to add a task, use the create_task tool. When they ask to see their tasks, use the get_tasks tool. Always confirm what you did in a short, friendly reply."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "46af5028-e328-46f0-8294-7c845c34beb3",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        80,
+        208
+      ],
+      "id": "11ff3bf4-cf72-4ab5-a1ac-d407bd3fbecd",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "U2w1rRtqT5vLtE19",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to add a new task to the user's to-do list. Input should be the task text.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1X4WYQ5cl4mO6YIPqjPBPaMevgbuqABBqbl_A7_Rdtjs",
+          "mode": "list",
+          "cachedResultName": "Tasks",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1X4WYQ5cl4mO6YIPqjPBPaMevgbuqABBqbl_A7_Rdtjs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1X4WYQ5cl4mO6YIPqjPBPaMevgbuqABBqbl_A7_Rdtjs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "pending",
+            "created_at": "={{ $now }}",
+            "task": "={{ $fromAI(\"task\") }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "task",
+              "displayName": "task",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        208
+      ],
+      "id": "f960ec82-cf62-4102-8066-251a39fc1dbf",
+      "name": "create_task",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uFZtUsrDtzTOrP8t",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        464,
+        304
+      ],
+      "id": "a608558c-e084-4979-831d-01df740797a6",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uFZtUsrDtzTOrP8t",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_task": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7d516834-c488-4253-a00c-fddc629b53f9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ffbd473873ec96f8c7c9a451a8aeb1535395b5ae1c7be3a3c3362de7765a162"
+  },
+  "id": "ZogeBxAzuxAbKpZk",
+  "tags": []
+}

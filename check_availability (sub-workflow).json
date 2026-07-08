@@ -1,0 +1,128 @@
+{
+  "name": "check_availability (sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "date"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -288,
+        -16
+      ],
+      "id": "a868b548-1cec-4df2-918a-daa0eaa30aeb",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "mominazd12@gmail.com",
+          "mode": "list",
+          "cachedResultName": "mominazd12@gmail.com"
+        },
+        "timeMin": "={{ $node[\"When Executed by Another Workflow\"].json.date }}T00:00:00",
+        "timeMax": "={{ $node[\"When Executed by Another Workflow\"].json.date }}T23:59:59",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        32
+      ],
+      "id": "37ba8326-fa5d-4802-b054-372d275cc8d2",
+      "name": "Get many events",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pYrYVId8iI7merwU",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const slots = $('generate_slots').all().map(item => item.json);\nconst events = $input.all().map(item => item.json);\n\nconst openSlots = slots.filter(slot => {\n  const slotStart = new Date(slot.start);\n  const slotEnd = new Date(slot.end);\n\n  const overlaps = events.some(event => {\n    // Skip events that don't have a proper start/end dateTime (e.g. all-day events)\n    if (!event.start || !event.end || !event.start.dateTime || !event.end.dateTime) {\n      return false;\n    }\n\n    const eventStart = new Date(event.start.dateTime);\n    const eventEnd = new Date(event.end.dateTime);\n    return slotStart < eventEnd && slotEnd > eventStart;\n  });\n\n  return !overlaps;\n});\n\nreturn openSlots.map(slot => ({ json: slot }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        32
+      ],
+      "id": "eb216da5-fc71-4928-bfc7-9dc7f7132712",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const SLOT_MINUTES = 30;\nconst WORK_START_HOUR = 9;\nconst WORK_END_HOUR = 17;\n\nconst requestedDate = $json.date;\n\nconst slots = [];\nlet current = new Date(`${requestedDate}T${String(WORK_START_HOUR).padStart(2,'0')}:00:00+05:00`);\nconst end = new Date(`${requestedDate}T${String(WORK_END_HOUR).padStart(2,'0')}:00:00+05:00`);\n\nwhile (current < end) {\n  const slotEnd = new Date(current.getTime() + SLOT_MINUTES * 60000);\n  slots.push({\n    id: slots.length,\n    start: current.toISOString(),\n    end: slotEnd.toISOString(),\n    display: current.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi' })\n      + ' - ' +\n      slotEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi' })\n  });\n  current = slotEnd;\n}\n\nreturn slots.map(slot => ({ json: slot }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1f8e5efe-d1bf-4efe-abf6-dfa332cc5142",
+      "name": "generate_slots"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "generate_slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many events": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate_slots": {
+      "main": [
+        [
+          {
+            "node": "Get many events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9ecb7685-7fb1-4ae9-9529-096fd467c35d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ffbd473873ec96f8c7c9a451a8aeb1535395b5ae1c7be3a3c3362de7765a162"
+  },
+  "id": "U8UXBSv3YZcDJtuh",
+  "tags": []
+}

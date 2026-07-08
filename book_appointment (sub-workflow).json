@@ -1,0 +1,432 @@
+{
+  "name": "book_appointment (sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "patient_id"
+            },
+            {
+              "name": "start_time"
+            },
+            {
+              "name": "end_time"
+            },
+            {
+              "name": "patient_name"
+            },
+            {
+              "name": "notes"
+            },
+            {
+              "name": "patient_phone"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        48
+      ],
+      "id": "49063117-cc02-4e1d-b8b1-29a0b39920ff",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "tableId": "appointments",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "=patient_id",
+              "fieldValue": "={{ $node[\"Merge\"].json.id }}"
+            },
+            {
+              "fieldId": "calendar_event_id",
+              "fieldValue": "={{ $node[\"Create an event\"].json.id }}"
+            },
+            {
+              "fieldId": "=appointment_time",
+              "fieldValue": "={{ $node[\"When Executed by Another Workflow\"].json.start_time }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "scheduled"
+            },
+            {
+              "fieldId": "notes",
+              "fieldValue": "={{ $node[\"When Executed by Another Workflow\"].json.notes }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        160
+      ],
+      "id": "14bbb38a-8e91-46b8-b5ce-3eea1e91bf30",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "cbyQl1gzas1rULGo",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "mominazd12@gmail.com",
+          "mode": "list",
+          "cachedResultName": "mominazd12@gmail.com"
+        },
+        "start": "={{ $node[\"normalize_times\"].json.start_time }}",
+        "end": "={{ $node[\"normalize_times\"].json.end_time }}",
+        "additionalFields": {
+          "summary": "={{ $node[\"When Executed by Another Workflow\"].json.patient_name }} - Appointment"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        112
+      ],
+      "id": "0fbb65b8-a06d-4ccb-be24-1383298412bc",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pYrYVId8iI7merwU",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "patients",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "condition": "eq",
+              "keyValue": "={{ $json.patient_phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        80
+      ],
+      "id": "bec37579-5f19-4eb1-9df0-3ffad40a320d",
+      "name": "lookup_patient",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "cbyQl1gzas1rULGo",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "68c9294e-7089-4db6-985f-db8100d4a269",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "4b90fd3c-73ad-44a5-9acb-f4f7f505a51e",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        144,
+        112
+      ],
+      "id": "8fe8f373-8eb1-4a13-ad64-08fc27339865",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "tableId": "patients",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $node[\"When Executed by Another Workflow\"].json.patient_name }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $node[\"When Executed by Another Workflow\"].json.patient_phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        304,
+        224
+      ],
+      "id": "6065e495-b0f1-41ce-995b-0dfb2263893d",
+      "name": "create_patient",
+      "credentials": {
+        "supabaseApi": {
+          "id": "cbyQl1gzas1rULGo",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        112
+      ],
+      "id": "eec73605-c581-4b4c-9e34-3ea3c9fcbd08",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawStart = $node[\"When Executed by Another Workflow\"].json.start_time;\nconst rawEnd = $node[\"When Executed by Another Workflow\"].json.end_time;\n\nfunction ensureOffset(timeStr) {\n  if (timeStr.includes('+') || timeStr.includes('Z')) {\n    return timeStr;\n  }\n  return `${timeStr}+05:00`;\n}\n\nreturn [{\n  json: {\n    start_time: ensureOffset(rawStart),\n    end_time: ensureOffset(rawEnd)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        112
+      ],
+      "id": "ec0b5177-3adb-4cae-ba5e-697c01acd3b1",
+      "name": "normalize_times"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8fdb7cd1-bff7-4223-aee2-7fd95d17b939",
+              "leftValue": "={{ $node[\"Merge\"].json.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        160
+      ],
+      "id": "10722274-4e32-4555-bb4b-3d2fc5f03d97",
+      "name": "has_email"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $node[\"Merge\"].json.email }}",
+        "subject": "Appointment Confirmation",
+        "message": "=Hi {{ $node[\"When Executed by Another Workflow\"].json.patient_name }},  Your appointment is confirmed for {{ $node[\"normalize_times\"].json.start_time }}.  Thank you for choosing our clinic!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        64
+      ],
+      "id": "297369ae-81fe-41ca-8c28-d6a7633e9067",
+      "name": "send_confirmation_email",
+      "webhookId": "4b7ecb3d-73c6-4a3a-af09-3f312c28bfcb",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "F0zBHs0p6vIeXMV7",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "patient_id": "2",
+          "start_time": "2026-08-03T09:00:00.000Z",
+          "end_time": "2026-08-03T09:30:00.000Z",
+          "patient_name": "Momina Zahid",
+          "notes": "No additional notes",
+          "patient_phone": "0333654624"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Create an event": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "lookup_patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "lookup_patient": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "create_patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_patient": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "normalize_times",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "normalize_times": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "has_email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "has_email": {
+      "main": [
+        [
+          {
+            "node": "send_confirmation_email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "99067b55-bd69-4849-a003-b935fc85e329",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ffbd473873ec96f8c7c9a451a8aeb1535395b5ae1c7be3a3c3362de7765a162"
+  },
+  "id": "fZyA77fuB0jAsefC",
+  "tags": []
+}

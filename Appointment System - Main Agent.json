@@ -1,0 +1,407 @@
+{
+  "name": "Appointment System - Main Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=You are an appointment management assistant.\n\nRULE 1: Before booking, call check_availability to get real open slots for the requested date.\nRULE 2: Before calling book_appointment, you must have the patient's name and phone number. If you don't have both, ask for them and wait for the answer — do not proceed without them.\nRULE 3: Only say \"your appointment is booked\" after book_appointment actually returns a success result. Never say it before calling the tool.\nRULE 4: When calling book_appointment, always include a value for the \"notes\" parameter. If the patient didn't mention any notes, use the exact text \"No additional notes\" — never leave this parameter out.\nRULE 5: Each slot from check_availability has an id, start_time, end_time, and display. When the patient picks a slot, use that exact slot's original start_time and end_time values when calling book_appointment — never recalculate or guess these values yourself.\nRULE 6: To reschedule, first find the patient's phone number, then ask what new date/time they want. Call check_availability for the new date to confirm the new slot is actually open. Describe the change clearly (old time → new time) and wait for explicit confirmation before calling reschedule_appointment. Only say \"your appointment has been rescheduled\" after the tool actually returns a success result.\nRULE 7: When providing new_start_time and new_end_time for rescheduling, always use the format YYYY-MM-DDTHH:MM:SS (24-hour time), without any timezone suffix — the system will handle timezone conversion automatically.\nRULE 8: Every single time a patient asks to reschedule or cancel an appointment, you MUST ask for their phone number first, even if a phone number was mentioned earlier in this conversation or appears in memory. Never skip this step or assume the phone number from context.\nRULE 9: When rescheduling, always ask the patient to confirm both the new date AND new time explicitly — do not assume or pick a date yourself.\nRULE 10: After calling any booking tool, check the tool's actual returned response before saying anything to the patient. Never assume success just because a tool ran without an explicit error shown to you.\nRULE 12: You must NEVER call reschedule_appointment until the patient has, in this exact conversation, explicitly typed both a new date and a new time as their own separate message. If you only have a phone number so far, your next message MUST be asking \"What new date and time would you like?\" — do not call any tool until you receive that literal answer from the patient.\nRULE 13: To cancel an appointment, ask for the patient's phone number (per RULE 8) — never invent or guess one. Do NOT ask for date/time; cancel_appointment finds their appointment automatically using their phone number. However, before actually cancelling, you MUST first call cancel_appointment's lookup, then clearly describe the specific appointment found (its exact date and time) back to the patient, and explicitly ask \"Should I cancel this appointment on [date] at [time]?\" Only proceed with the actual cancellation after the patient replies with clear confirmation like \"yes.\"\nRULE 14: If a tool call fails or returns an error, do NOT immediately retry the same tool call. Instead, tell the patient there was a technical issue and ask them to try again in a moment. Never call the same tool more than twice in a row without giving the patient an update.\nRULE 15: Never assume or pick a date on your own for any action. If the patient asks to book, reschedule, or check availability without specifying a date, you MUST ask \"What date would you like?\" and wait for their answer before calling any tool.\n\nCurrent date: {{ $now }} Appointment slots are 30 minutes long."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        176,
+        0
+      ],
+      "id": "b154bc3f-a8bd-465c-a8b4-16480d347d53",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "8887691f-e55b-4dd8-be6a-e3570343140d",
+      "name": "When chat message received",
+      "webhookId": "9523a9c3-98c9-4f80-a858-6bb4cd4bd486"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        224,
+        192
+      ],
+      "id": "e3ba934f-b905-4e1c-a0c2-50112a0eef4b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to find all open appointment slots on a given date. Requires a date (e.g., \"2026-07-15\"). Returns a list of available time slots based on working hours and existing bookings. If no slots are returned, that day is fully booked — suggest the patient try a different day.",
+        "workflowId": {
+          "__rl": true,
+          "value": "U8UXBSv3YZcDJtuh",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/U8UXBSv3YZcDJtuh",
+          "cachedResultName": "check_availability (sub-workflow)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('date', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "date"
+          ],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        208
+      ],
+      "id": "236e9413-f901-44ee-9df1-9354bf625834",
+      "name": "Call 'check_availability (sub-workflow)'"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to reschedule an existing appointment to a new time. Requires patient_phone, new_start_time, and new_end_time. Only call this AFTER the patient has explicitly confirmed they want to make this change.",
+        "workflowId": {
+          "__rl": true,
+          "value": "rtqvpayNdrJSMkRb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/rtqvpayNdrJSMkRb",
+          "cachedResultName": "reschedule_appointment (sub-workflow)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "patient_phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('patient_phone', ``, 'string') }}",
+            "new_start_time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('new_start_time', ``, 'string') }}",
+            "new_end_time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('new_end_time', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "patient_phone",
+              "displayName": "patient_phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "new_start_time",
+              "displayName": "new_start_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "new_end_time",
+              "displayName": "new_end_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        512,
+        288
+      ],
+      "id": "09afd4a5-26a2-47c5-9cce-aac67eaa2a5c",
+      "name": "reschedule_appointment"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "fZyA77fuB0jAsefC",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/fZyA77fuB0jAsefC",
+          "cachedResultName": "book_appointment (sub-workflow)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "patient_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('patient_id', ``, 'string') }}",
+            "start_time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('start_time', ``, 'string') }}",
+            "end_time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('end_time', ``, 'string') }}",
+            "patient_name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('patient_name', ``, 'string') }}",
+            "notes": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('notes', ``, 'string') }}",
+            "patient_phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('patient_phone', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "patient_id",
+              "displayName": "patient_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "start_time",
+              "displayName": "start_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "end_time",
+              "displayName": "end_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "patient_name",
+              "displayName": "patient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "patient_phone",
+              "displayName": "patient_phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        160
+      ],
+      "id": "efeb27e0-3d23-4585-b574-0c9a89990d55",
+      "name": "Call 'book_appointment (sub-workflow)'"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        48,
+        208
+      ],
+      "id": "ed2dac98-85e9-49de-9cc0-58ea2cf666df",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "U2w1rRtqT5vLtE19",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to cancel a patient's appointment. This tool automatically looks up the patient's current scheduled appointment using their phone number — you do NOT need to ask the patient for the date or time of their appointment. Simply confirm their phone number, then confirm with the patient that they want to cancel their appointment (the tool will tell you which one it found), then call this tool.",
+        "workflowId": {
+          "__rl": true,
+          "value": "KLVzJd4wRboJv21V",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/KLVzJd4wRboJv21V",
+          "cachedResultName": "cancel_appointment (sub-workflow)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "patient_phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('patient_phone', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "patient_phone"
+          ],
+          "schema": [
+            {
+              "id": "patient_phone",
+              "displayName": "patient_phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        688,
+        224
+      ],
+      "id": "81c2761e-bbd4-4d3f-9549-0808eadc6afa",
+      "name": "cancel_appointment"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'check_availability (sub-workflow)'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "reschedule_appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'book_appointment (sub-workflow)'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cancel_appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "3ce288b4-d9d3-4a3f-a79e-1f9214d524f9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ffbd473873ec96f8c7c9a451a8aeb1535395b5ae1c7be3a3c3362de7765a162"
+  },
+  "id": "RGn0CG3lL1Oz5Mz3",
+  "tags": []
+}

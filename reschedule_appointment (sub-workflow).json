@@ -1,0 +1,340 @@
+{
+  "name": "reschedule_appointment (sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "patient_phone"
+            },
+            {
+              "name": "new_start_time"
+            },
+            {
+              "name": "new_end_time"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7d74c737-5e13-4dd8-8a14-a1556b001a10",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "patients",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "condition": "eq",
+              "keyValue": "={{ $json.patient_phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "fc37d08e-e2f5-4f4a-ba79-14700a7635c7",
+      "name": "find_patient",
+      "credentials": {
+        "supabaseApi": {
+          "id": "cbyQl1gzas1rULGo",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "appointments",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "patient_id",
+              "condition": "eq",
+              "keyValue": "= {{ $json.id }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "neq",
+              "keyValue": "cancelled"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "eb02116b-453d-4dd3-8c46-d37983ba7c89",
+      "name": "find_appointment",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "cbyQl1gzas1rULGo",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "calendar": {
+          "__rl": true,
+          "value": "mominazd12@gmail.com",
+          "mode": "list",
+          "cachedResultName": "mominazd12@gmail.com"
+        },
+        "eventId": "={{ $node[\"pick_appointment\"].json.calendar_event_id }}",
+        "updateFields": {
+          "end": "={{ $node[\"normalize_times\"].json.new_end_time }}",
+          "start": "={{ $node[\"normalize_times\"].json.new_start_time }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "157d1d8e-906c-4b7a-8c3b-acd626e847a1",
+      "name": "update_event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "pYrYVId8iI7merwU",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "appointments",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"pick_appointment\"].json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "appointment_time",
+              "fieldValue": "={{ $node[\"When Executed by Another Workflow\"].json.new_start_time }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "rescheduled"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "b994d7b0-127e-4a74-ba80-49f32ed5e17d",
+      "name": "update_appointment_row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "cbyQl1gzas1rULGo",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const appointments = $input.all().map(item => item.json);\n\n// Sort by appointment_time descending, pick the soonest upcoming one\n// (or simplest: just take the most recently created one)\nconst sorted = appointments.sort((a, b) => new Date(b.appointment_time) - new Date(a.appointment_time));\n\nif (sorted.length === 0) {\n  return [{ json: { found: false, message: \"No scheduled appointment found for this patient.\" } }];\n}\n\nreturn [{ json: { found: true, ...sorted[0] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "92a2b3ab-04c1-479b-9243-7de1f0b349ab",
+      "name": "pick_appointment"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawStart = $node[\"When Executed by Another Workflow\"].json.new_start_time;\nconst rawEnd = $node[\"When Executed by Another Workflow\"].json.new_end_time;\n\n// Ensure timezone offset is present; if not, append Pakistan offset\nfunction ensureOffset(timeStr) {\n  if (timeStr.includes('+') || timeStr.includes('Z')) {\n    return timeStr; // already has offset\n  }\n  return `${timeStr}+05:00`;\n}\n\nreturn [{\n  json: {\n    new_start_time: ensureOffset(rawStart),\n    new_end_time: ensureOffset(rawEnd)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "a26f56ae-f3c2-4da3-bafa-f6f1434a5b32",
+      "name": "normalize_times"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7e9b8240-604b-4b6d-abc8-2f69e63a306c",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        32
+      ],
+      "id": "88d2e4de-9a5f-4d23-b236-bb8eef3a58bf",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { success: false, message: \"No scheduled appointment found for this patient.\" } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        128
+      ],
+      "id": "b1acedd8-8bc0-4451-87f1-edb1511b467f",
+      "name": "not_found_response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "find_patient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "find_patient": {
+      "main": [
+        [
+          {
+            "node": "find_appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "find_appointment": {
+      "main": [
+        [
+          {
+            "node": "pick_appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_event": {
+      "main": [
+        [
+          {
+            "node": "update_appointment_row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pick_appointment": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "normalize_times": {
+      "main": [
+        [
+          {
+            "node": "update_event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "normalize_times",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "not_found_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8f031c45-b946-46d6-bb52-254caa42f729",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ffbd473873ec96f8c7c9a451a8aeb1535395b5ae1c7be3a3c3362de7765a162"
+  },
+  "id": "rtqvpayNdrJSMkRb",
+  "tags": []
+}
